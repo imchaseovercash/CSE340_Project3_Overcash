@@ -10,7 +10,7 @@
 
 class InputBuffer {
 public:
-    void GetChar(char&);
+    bool GetChar(char&);
     char UngetChar(char);
     std::string UngetString(std::string);
     bool EndOfInput();
@@ -18,6 +18,5 @@ public:
 private:
     std::vector<char> input_buffer;
 };
-
 
 #endif //CSE340_PROJECT3_OVERCASH_INPUTBUF_H

@@ -47,4 +47,5 @@ private:
     Token ScanNumber();
 };
 
+
 #endif //CSE340_PROJECT3_OVERCASH_LEXER_H
