@@ -5,6 +5,11 @@
 #ifndef CSE340_PROJECT3_OVERCASH_LEXER_H
 #define CSE340_PROJECT3_OVERCASH_LEXER_H
 
+#include <vector>
+#include <string>
+
+#include "inputbuf.h"
+
 
 // ------- token types -------------------
 
@@ -32,6 +37,7 @@ public:
     TokenType UngetToken(Token);
     LexicalAnalyzer();
     int get_line_no();
+    bool isEmpty();
 
 private:
     std::vector<Token> tokens;

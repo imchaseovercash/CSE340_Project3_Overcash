@@ -5,7 +5,6 @@
 #ifndef CSE340_PROJECT3_OVERCASH_INPUTBUF_H
 #define CSE340_PROJECT3_OVERCASH_INPUTBUF_H
 
-
 #include <string>
 
 class InputBuffer {
@@ -18,5 +17,4 @@ public:
 private:
     std::vector<char> input_buffer;
 };
-
 #endif //CSE340_PROJECT3_OVERCASH_INPUTBUF_H

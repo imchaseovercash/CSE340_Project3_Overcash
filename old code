@@ -1,0 +1,213 @@
+
+    Token t1 = lexer.GetToken();
+    if (is_Arithmetic(t1) || is_BinaryBool(t1) || is_Relational(t1)) {
+        t1.Print();
+        exprCount += 1;
+        parse_Expr(lexer, exprCount);
+    } else if (is_Primary(t1)) {
+        exprCount -= 1;
+        t1.Print();
+        Token t2 = lexer.GetToken();
+        if (t2.token_type == SEMICOLON && exprCount == 0) {
+            t2.Print();
+            parse_nextLine(lexer);
+        } else if (t2.token_type == RPAREN && exprCount == 0) {
+            t2.Print();
+            Token t3 = lexer.GetToken();
+            if (t3.token_type == LBRACE) {
+                t3.Print();
+                parse_nextLine(lexer);
+            } else {
+                lexer.UngetToken(t3);
+                parse_nextLine(lexer);
+            }
+        } else if (exprCount >= 1) {
+            lexer.UngetToken(t2);
+            parse_Expr(lexer, exprCount);
+        } else {
+            printf("Syntax Error at line number %d \n", __LINE__);
+            syntaxError();
+        }
+    } else if (t1.token_type == NOT) {
+        t1.Print();
+        parse_Expr(lexer, exprCount);
+    } else {
+        printf("Syntax Error at line number %d \n", __LINE__);
+        syntaxError();
+    }
+
+void parse_assignStmt(LexicalAnalyzer lexer) {
+    Token t1 = lexer.GetToken();
+    if (is_Expr(t1)) {
+        lexer.UngetToken(t1);
+        parse_Expr(lexer);
+    } else {
+       //// printf("Syntax Error at line number %d \n", __LINE__);
+        syntaxError();
+    }
+}
+
+void parse_whileStmt(LexicalAnalyzer lexer) {
+    Token t1 = lexer.GetToken();
+    if (t1.token_type == LPAREN) {
+        t1.Print();
+        Token t2 = lexer.GetToken();
+        if (is_Expr(t2)) {
+            lexer.UngetToken(t2);
+            parse_Expr(lexer);
+        } else{
+            //// printf("Syntax Error at line number %d \n", __LINE__);
+            syntaxError();
+        }
+    } else{
+       //// printf("Syntax Error at line number %d \n", __LINE__);
+        syntaxError();
+    }
+}
+
+void parse_varDecl(LexicalAnalyzer lexer);
+
+void parse_idList(LexicalAnalyzer lexer) {
+    Token t1 = lexer.GetToken();
+    if (t1.token_type == COMMA) {
+        t1.Print();
+        Token t2 = lexer.GetToken();
+        if (t2.token_type == ID) {
+            t2.Print();
+            parse_idList(lexer);
+        } else {
+           //// printf("Syntax Error at line number %d \n", __LINE__);
+            syntaxError();
+        }
+    } else if (t1.token_type == COLON) {
+        lexer.UngetToken(t1);
+        parse_varDecl(lexer);
+    } else {
+       //// printf("Syntax Error at line number %d \n", __LINE__);
+        syntaxError();
+    }
+}
+
+void parse_varDecl(LexicalAnalyzer lexer) {
+    Token t1 = lexer.GetToken();
+    if (t1.token_type == COMMA) {
+        t1.Print();
+        Token t2 = lexer.GetToken();
+        if (t2.token_type == ID) {
+            t2.Print();
+            parse_idList(lexer);
+        } else{
+            //// printf("Syntax Error at line number %d \n", __LINE__);
+            syntaxError();
+        }
+    } else if (t1.token_type == COLON) {
+        t1.Print();
+        Token t2 = lexer.GetToken();
+        if (t2.token_type == REAL || t2.token_type == INT || t2.token_type == BOOLEAN || t2.token_type == STRING) {
+            t2.Print();
+            Token t3 = lexer.GetToken();
+            if (t3.token_type == SEMICOLON) {
+                t3.Print();
+                parse_nextLine(lexer);
+            } else {
+               //// printf("Syntax Error at line number %d \n", __LINE__);
+                syntaxError();
+            }
+        } else {
+           //// printf("Syntax Error at line number %d \n", __LINE__);
+            syntaxError();
+        }
+    } else {
+       //// printf("Syntax Error at line number %d \n", __LINE__);
+        syntaxError();
+    }
+}
+
+void parse_scopeList(LexicalAnalyzer lexer) {
+    Token t1 = lexer.GetToken();
+    if (t1.token_type == ID) {
+        t1.Print();
+        Token t2 = lexer.GetToken();
+        if (t2.token_type == COLON || t2.token_type == COMMA) {
+            lexer.UngetToken(t2);
+            parse_varDecl(lexer);
+        } else if (t2.token_type == EQUAL) {
+            t2.Print();
+            parse_assignStmt(lexer);
+        } else {
+           //// printf("Syntax Error at line number %d \n", __LINE__);
+            syntaxError();
+        }
+    } else if (t1.token_type == WHILE) {
+        t1.Print();
+        parse_whileStmt(lexer);
+    }
+    else {
+       //// printf("Syntax Error at line number %d \n", __LINE__);
+        syntaxError();
+    }
+}
+
+void parse_nextLine(LexicalAnalyzer lexer) {
+    Token t1 = lexer.GetToken();
+    if (t1.token_type == RBRACE) {
+        t1.Print();
+        Token t2 = lexer.GetToken();
+        if (t2.token_type == END_OF_FILE) {
+            t2.Print();
+            finishState();
+        } else {
+            lexer.UngetToken(t2);
+            parse_nextLine(lexer);
+        }
+    } else if (t1.token_type != END_OF_FILE) {
+        if (t1.token_type == LBRACE) {
+            lexer.UngetToken(t1);
+            parse_Scope(lexer);
+        } else {
+            lexer.UngetToken(t1);
+            parse_scopeList(lexer);
+        }
+    } else {
+       //// printf("Syntax Error at line number %d \n", __LINE__);
+        syntaxError();
+    }
+}
+
+void parse_Scope(LexicalAnalyzer lexer) {
+    Token t1 = lexer.GetToken();
+    if (t1.token_type == LBRACE) {
+        t1.Print();
+        parse_scopeList(lexer);
+    } else {
+       //// printf("Syntax Error at line number %d \n", __LINE__);
+        syntaxError();
+    }
+
+}
+
+
+//        if (t1.token_type == ID)
+//        {
+//            primary->PRIM_TYPE->idNumber = 3;
+//        }
+//        else if (t1.token_type == NUM){
+//            primary->PRIM_TYPE->idNumber = 28;
+//        }
+//        else if (t1.token_type == REALNUM)
+//        {
+//            primary->PRIM_TYPE->idNumber = 29;
+//        }
+//        else if (t1.token_type == STRING_CONSTANT)
+//        {
+//            primary->PRIM_TYPE->idNumber = 27;
+//        }
+//        else if (t1.token_type == TRUE){
+//            primary->PRIM_TYPE->idNumber = 1;
+//        }
+//        else if (t1.token_type == FALSE) {
+//            primary->PRIM_TYPE->idNumber = 0;
+//        }
+//        else{
+//            syntaxError();
+//        }

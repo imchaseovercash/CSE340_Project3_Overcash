@@ -13,13 +13,13 @@
 
 using namespace std;
 
-string reserved[] = { "END_OF_FILE",
-                      "REAL", "INT", "BOOLEAN", "STRING",
-                      "WHILE", "TRUE", "FALSE", "COMMA", "COLON", "SEMICOLON",
-                      "LBRACE", "RBRACE", "LPAREN", "RPAREN",
-                      "EQUAL", "PLUS", "MINUS", "MULT", "DIV","AND", "OR", "XOR", "NOT",
-                      "GREATER", "GTEQ", "LESS", "LTEQ", "NOTEQUAL",
-                      "ID", "NUM", "REALNUM", "STRING_CONSTANT", "ERROR"
+string reserved[] = {"END_OF_FILE",
+                     "REAL", "INT", "BOOLEAN", "STRING",
+                     "WHILE", "TRUE", "FALSE", "COMMA", "COLON", "SEMICOLON",
+                     "LBRACE", "RBRACE", "LPAREN", "RPAREN",
+                     "EQUAL", "PLUS", "MINUS", "MULT", "DIV", "AND", "OR", "XOR", "NOT",
+                     "GREATER", "GTEQ", "LESS", "LTEQ", "NOTEQUAL",
+                     "ID", "NUM", "REALNUM", "STRING_CONSTANT", "ERROR"
 };
 
 #define KEYWORDS_COUNT 7
@@ -28,16 +28,14 @@ string keyword[] = {
         "WHILE", "TRUE", "FALSE"
 };
 
-void Token::Print()
-{
+void Token::Print() {
     cout << "{" << this->lexeme << " , "
          << reserved[(int) this->token_type] << " , "
          << this->line_no << "}\n";
 
 }
 
-LexicalAnalyzer::LexicalAnalyzer()
-{
+LexicalAnalyzer::LexicalAnalyzer() {
     this->line_no = 1;
     tmp.lexeme = "";
     tmp.line_no = 1;
@@ -48,8 +46,7 @@ int LexicalAnalyzer::get_line_no() {
     return line_no;
 }
 
-bool LexicalAnalyzer::SkipSpace()
-{
+bool LexicalAnalyzer::SkipSpace() {
     char c;
     bool space_encountered = false;
 
@@ -71,8 +68,7 @@ bool LexicalAnalyzer::SkipSpace()
     return space_encountered;
 }
 
-bool LexicalAnalyzer::IsKeyword(string s)
-{
+bool LexicalAnalyzer::IsKeyword(string s) {
     for (int i = 0; i < KEYWORDS_COUNT; i++) {
         if (s == keyword[i]) {
             return true;
@@ -81,8 +77,7 @@ bool LexicalAnalyzer::IsKeyword(string s)
     return false;
 }
 
-TokenType LexicalAnalyzer::FindKeywordIndex(string s)
-{
+TokenType LexicalAnalyzer::FindKeywordIndex(string s) {
     for (int i = 0; i < KEYWORDS_COUNT; i++) {
         if (s == keyword[i]) {
             return (TokenType) (i + 1);
@@ -92,8 +87,7 @@ TokenType LexicalAnalyzer::FindKeywordIndex(string s)
 }
 
 
-Token LexicalAnalyzer::ScanNumber()
-{
+Token LexicalAnalyzer::ScanNumber() {
     char c;
     tmp.lexeme = "";
     tmp.token_type = ERROR;
@@ -155,8 +149,7 @@ Token LexicalAnalyzer::ScanNumber()
     }
 }
 
-Token LexicalAnalyzer::ScanIdOrKeyword()
-{
+Token LexicalAnalyzer::ScanIdOrKeyword() {
     char c;
     tmp.lexeme = "";
     tmp.token_type = ERROR;
@@ -189,8 +182,7 @@ Token LexicalAnalyzer::ScanIdOrKeyword()
     return tmp;
 }
 
-Token LexicalAnalyzer::ScanStringCons()
-{
+Token LexicalAnalyzer::ScanStringCons() {
     char c;
     tmp.lexeme = "";
     tmp.token_type = ERROR;
@@ -213,14 +205,12 @@ Token LexicalAnalyzer::ScanStringCons()
             if (c == '"') {
                 tmp.lexeme += lexeme;
                 tmp.token_type = STRING_CONSTANT;
-            }
-            else{
+            } else {
                 tmp.lexeme = "";
                 tmp.token_type = ERROR;
             }
 
-        }
-        else{
+        } else {
             tmp.lexeme = "";
             tmp.token_type = ERROR;
         }
@@ -236,6 +226,7 @@ Token LexicalAnalyzer::ScanStringCons()
     }
     return tmp;
 }
+
 // you should unget tokens in the reverse order in which they
 // are obtained. If you execute
 //
@@ -252,14 +243,12 @@ Token LexicalAnalyzer::ScanStringCons()
 // if you want to unget all three tokens. Note that it does not
 // make sense to unget t1 without first ungetting t2 and t3
 //
-TokenType LexicalAnalyzer::UngetToken(Token tok)
-{
+TokenType LexicalAnalyzer::UngetToken(Token tok) {
     tokens.push_back(tok);;
     return tok.token_type;
 }
 
-Token LexicalAnalyzer::GetToken()
-{
+Token LexicalAnalyzer::GetToken() {
     char c;
 
     // if there are tokens that were previously
@@ -282,22 +271,54 @@ Token LexicalAnalyzer::GetToken()
         return tmp;
 
     switch (c) {
-        case ',': tmp.token_type = COMMA;       return tmp;
-        case ':': tmp.token_type = COLON;       return tmp;
-        case ';': tmp.token_type = SEMICOLON;   return tmp;
-        case '{': tmp.token_type = LBRACE;      return tmp;
-        case '}': tmp.token_type = RBRACE;      return tmp;
-        case '(': tmp.token_type = LPAREN;      return tmp;
-        case ')': tmp.token_type = RPAREN;      return tmp;
-        case '=': tmp.token_type = EQUAL;       return tmp;
-        case '+': tmp.token_type = PLUS;        return tmp;
-        case '-': tmp.token_type = MINUS;       return tmp;
-        case '*': tmp.token_type = MULT;        return tmp;
-        case '/': tmp.token_type = DIV;        return tmp;
-        case '|': tmp.token_type = OR;          return tmp;
-        case '^': tmp.token_type = AND;         return tmp;
-        case '&': tmp.token_type = XOR;         return tmp;
-        case '~': tmp.token_type = NOT;         return tmp;
+        case ',':
+            tmp.token_type = COMMA;
+            return tmp;
+        case ':':
+            tmp.token_type = COLON;
+            return tmp;
+        case ';':
+            tmp.token_type = SEMICOLON;
+            return tmp;
+        case '{':
+            tmp.token_type = LBRACE;
+            return tmp;
+        case '}':
+            tmp.token_type = RBRACE;
+            return tmp;
+        case '(':
+            tmp.token_type = LPAREN;
+            return tmp;
+        case ')':
+            tmp.token_type = RPAREN;
+            return tmp;
+        case '=':
+            tmp.token_type = EQUAL;
+            return tmp;
+        case '+':
+            tmp.token_type = PLUS;
+            return tmp;
+        case '-':
+            tmp.token_type = MINUS;
+            return tmp;
+        case '*':
+            tmp.token_type = MULT;
+            return tmp;
+        case '/':
+            tmp.token_type = DIV;
+            return tmp;
+        case '|':
+            tmp.token_type = OR;
+            return tmp;
+        case '^':
+            tmp.token_type = AND;
+            return tmp;
+        case '&':
+            tmp.token_type = XOR;
+            return tmp;
+        case '~':
+            tmp.token_type = NOT;
+            return tmp;
         case '>':
             input.GetChar(c);
             if (c == '=') {
@@ -343,250 +364,4 @@ Token LexicalAnalyzer::GetToken()
             }
             return tmp;
     }
-}
-
-void syntaxError() {
-    cout << "Syntax_Error ";
-}
-
-bool is_Primary(Token token) {
-    return token.token_type == ID || token.token_type == NUM || token.token_type == REALNUM ||
-           token.token_type == STRING_CONSTANT || token.token_type == TRUE || token.token_type == FALSE;
-}
-
-bool is_Arithmetic(Token t2) {
-    return t2.token_type == PLUS || t2.token_type == MINUS || t2.token_type == MULT || t2.token_type == DIV;
-}
-
-bool is_BinaryBool(Token t2) {
-    return t2.token_type == AND || t2.token_type == OR || t2.token_type == XOR;
-}
-
-bool is_Relational(Token t2) {
-    return t2.token_type == GREATER || t2.token_type == GTEQ || t2.token_type == LESS || t2.token_type == NOTEQUAL ||
-           t2.token_type == LTEQ;
-}
-
-bool is_Expr(Token token) {
-    return is_Arithmetic(token) || is_BinaryBool(token) || is_Relational(token) || token.token_type == ID ||
-           token.token_type == NOT;
-}
-
-void parse_varDecl()
-{
-
-}
-void parse_Expr() {
-    LexicalAnalyzer lexer;
-    Token t1 = lexer.GetToken();
-    if (is_Relational(t1)) {
-        t1.Print();
-        Token t2 = lexer.GetToken();
-        if (is_Expr(t2)) {
-            lexer.UngetToken(t2);
-            parse_Expr();
-            Token t3 = lexer.GetToken();
-            if (is_Expr(t3)) {
-                lexer.UngetToken(t3);
-                parse_Expr();
-            } else {
-                syntaxError();
-            }
-        } else {
-            syntaxError();
-        }
-    } else if (is_BinaryBool(t1)) {
-        t1.Print();
-        Token t2 = lexer.GetToken();
-        if (is_Expr(t2)) {
-            lexer.UngetToken(t2);
-            parse_Expr();
-            Token t3 = lexer.GetToken();
-            if (is_Expr(t3)) {
-                lexer.UngetToken(t3);
-                parse_Expr();
-            } else {
-                syntaxError();
-            }
-        } else {
-            syntaxError();
-        }
-    } else if (is_Arithmetic(t1)) {
-        t1.Print();
-        Token t2 = lexer.GetToken();
-        if (is_Expr(t2)) {
-            lexer.UngetToken(t2);
-            parse_Expr();
-            Token t3 = lexer.GetToken();
-            if (is_Expr(t3)) {
-                lexer.UngetToken(t3);
-                parse_Expr();
-            } else {
-                syntaxError();
-            }
-        } else {
-            syntaxError();
-        }
-    } else if (t1.token_type == NOT) {
-        t1.Print();
-        Token t2 = lexer.GetToken();
-        if (is_Expr(t2)) {
-            lexer.UngetToken(t2);
-            parse_Expr();
-        } else {
-            syntaxError();
-        }
-    } else if (is_Primary(t1)) {
-        t1.Print();
-    } else {
-        syntaxError();
-    }
-
-}
-void parse_whileStmt();
-
-void parse_assignStmt() {
-    LexicalAnalyzer lexer;
-    Token t1 = lexer.GetToken();
-    if (is_Arithmetic(t1) || is_BinaryBool(t1) || is_Relational(t1) || t1.token_type == NOT || is_Primary(t1)) {
-        lexer.UngetToken(t1);
-        parse_Expr();
-    } else {
-        syntaxError();
-    }
-}
-
-void parse_Stmt() {
-    LexicalAnalyzer lexer;
-    Token t1 = lexer.GetToken();
-    if (t1.token_type == ID) {
-        t1.Print();
-        Token t2 = lexer.GetToken();
-        if (t2.token_type == EQUAL) {
-            t2.Print();
-            parse_assignStmt();
-        } else {
-            syntaxError();
-        }
-    } else if (t1.token_type == WHILE) {
-        t1.Print();
-        parse_whileStmt();
-    } else {
-        syntaxError();
-    }
-}
-
-void parse_stmtList() {
-    LexicalAnalyzer lexer;
-    Token t1 = lexer.GetToken();
-    if (t1.token_type == ID) {
-        t1.Print();
-        Token t2 = lexer.GetToken();
-        if (t2.token_type == EQUAL) {
-            t2.Print();
-            parse_assignStmt();
-            Token t3 = lexer.GetToken();
-            if(t3.token_type == ID || t3.token_type == WHILE)
-            {
-                lexer.UngetToken(t3);
-                parse_stmtList();
-            }
-        } else {
-            syntaxError();
-        }
-    } else if (t1.token_type == WHILE) {
-        t1.Print();
-        parse_whileStmt();
-        Token t3 = lexer.GetToken();
-        if(t3.token_type == ID || t3.token_type == WHILE)
-        {
-            lexer.UngetToken(t3);
-            parse_stmtList();
-        }
-    } else {
-        syntaxError();
-    }
-}
-
-void parse_whileStmt() {
-    LexicalAnalyzer lexer;
-    Token t1 = lexer.GetToken();
-    if (t1.token_type == LPAREN) {
-        t1.Print();
-        Token t2 = lexer.GetToken();
-        if (is_Expr(t2))
-        {
-            lexer.UngetToken(t2);
-            parse_Expr();
-            t2 = lexer.GetToken();
-            if (t2.token_type == RPAREN )
-            {
-               t2.Print();
-               Token t3 = lexer.GetToken();
-               if (t3.token_type == ID || t3.token_type == WHILE)
-               {
-                   lexer.UngetToken(t3);
-                   parse_Stmt();
-               } else{
-                   syntaxError();
-               }
-            } else if (t2.token_type == LBRACE){
-                t2.Print();
-                parse_stmtList();
-                Token t3 = lexer.GetToken();
-                if (t3.token_type == RBRACE)
-                {
-                    t3.Print();
-                }
-            } else{
-                syntaxError();
-            }
-        } else
-        {
-            syntaxError();
-        }
-    }
-}
-
-
-
-void parse_scope() {
-    LexicalAnalyzer lexer;
-    Token t1 = lexer.GetToken();
-    if (t1.token_type == LBRACE) {
-        t1.Print();
-        Token t2 = lexer.GetToken();
-        if (t2.token_type == ID) {
-            Token t3 = lexer.GetToken();
-            if (t3.token_type == COLON || t3.token_type == COMMA) {
-                lexer.UngetToken(t3);
-                parse_varDecl();
-            } else if (t3.token_type == EQUAL) {
-                parse_assignStmt();
-            } else
-                syntaxError();
-        } else if (t2.token_type == WHILE) {
-            t2.Print();
-            parse_whileStmt();
-        } else {
-            syntaxError();
-        }
-    }
-
-}
-
-int main() {
-    LexicalAnalyzer lexer;
-    Token token;
-
-    token = lexer.GetToken();
-    token.Print();
-    if (token.token_type == LBRACE) {
-        lexer.UngetToken(token);
-        parse_scope();
-    } else {
-        syntaxError();
-    }
-
-
 }
