@@ -465,7 +465,7 @@ struct while_stmtTree *parse_whileStmt(LexicalAnalyzer lexer) {
             //t2.Print();
             indexNode *index = new(indexNode);
             index->type = "WHILE";
-            index->start;
+            index->start = t2.line_no;
             deques.scope_indexes.push_back(index);
             while_stmt->LB->tokenType = t2.token_type;
             while_stmt->STMT_LIST = parse_stmtList(lexer);
@@ -878,7 +878,7 @@ struct scopeTree *parse_Scope(LexicalAnalyzer lexer) {
 
 int main() {
     //// initialize stuff
-    struct programTree *program = new(programTree);
+    struct programTree * program_tree = new(programTree);
     LexicalAnalyzer lexer;
 
     //// in case we need to check correct order
@@ -892,7 +892,7 @@ int main() {
     //// add scope tree to programs
     Token token = lexer.GetToken();
     if (token.token_type == LBRACE) {
-        program->S = parse_Scope(lexer);
+        program_tree->S = parse_Scope(lexer);
     }
     else{
         syntaxError();
