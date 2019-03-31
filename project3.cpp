@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include "lexer.h"
 #include "inputbuf.h"
+#include "algorithm"
 //#include "execinfo.h"
 
 using namespace std;
@@ -80,17 +81,33 @@ struct indexNode {
     int start;
     int end;
     string type;
+    vector<node *> declarations;
+    vector<node *> references;
+    vector<node *> LHS_references;
+    vector<node *> temp_type_RHS;
+    vector<node *> temp_type_LHS;
+    vector<node *> operatorTypeMatcher;
+
+
+};
+struct node {
+
+    Token token;
+    Token assignedType;
+    TokenType tokenType;
+    int idNumber;
 };
 struct indexDeques {
     deque<indexNode *> scope_indexes;
     deque<indexNode *> completed_indexes;
+    vector<node *> allDeclarations;
+    bool isDeclarationErrorFound = false;
+    string declarationErrorFound;
+    bool isTypeErrorFound = false;
+    string typeErrorFound;
+    bool isRHS_TypeErrorFound = false;
+    string RHS_typeErrorFound;
 } deques;
-
-struct node {
-    int idNumber;
-    string tokenName;
-    TokenType tokenType;
-};
 struct operatorTree {
     struct node *OP_TYPE;
     struct exprTree *EXPR1;
@@ -190,24 +207,35 @@ struct programTree {
 //
 //}
 
+
 void syntaxError() {
     cout << "Syntax Error";
     exit(EXIT_FAILURE);
 }
 
-void isSyntaxError()
-{
-    if (deques.scope_indexes.empty())
-    {
-        syntaxError();
-    }
-    else if (!deques.completed_indexes.empty()) {
-        for (indexNode *nodes : deques.completed_indexes) {
-            if (nodes->type != "SCOPE" && nodes->type != "WHILE" )
-                syntaxError();
-            else if (nodes->start <= 0 || nodes->end < nodes->start || nodes->end <= 1)
-                syntaxError();
+void isErrorOneOne(string lex) {
+    for (node *node1:deques.scope_indexes.back()->declarations) {
+        if (node1->token.lexeme == lex) {
+            deques.isDeclarationErrorFound = true;
+            deques.declarationErrorFound = "ERROR CODE 1.1 " + lex;
         }
+    }
+}
+
+void isErrorOneTwo(string lex) {
+    bool declared = false;
+    for (indexNode *indexNode : deques.scope_indexes) {
+        for (node *node1: indexNode->declarations) {
+            if (node1->token.lexeme == lex) {
+                declared = true;
+            }
+        }
+
+    }
+    if (!declared) {
+        deques.isDeclarationErrorFound = true;
+        deques.declarationErrorFound = "ERROR CODE 1.2 " + lex;
+        return;
     }
 }
 
@@ -265,13 +293,38 @@ struct primaryTree *parse_Primary(LexicalAnalyzer lexer) {
     Token t1 = lexer.GetToken();
     if (is_Primary(t1)) {
         //t1.Print();
-        primary->PRIM_TYPE->tokenType = t1.token_type;
-        primary->lexer = lexer;
-        return primary;
+        if (t1.token_type == ID) {
+            if (!deques.isDeclarationErrorFound)
+                isErrorOneTwo(t1.lexeme);
+            node *node1 = new (node);
+            int i = -1;
+//            //// Type Error C1 Checking ////
+            for (node *node : deques.allDeclarations) {
+                if (node->token.lexeme == t1.lexeme) {
+                    i = node->idNumber;
+                }
+            }
+            node1->token = t1;
+            node1->idNumber = i;
+            deques.scope_indexes.back()->references.push_back(node1);
+            deques.scope_indexes.back()->temp_type_LHS.push_back(node1);
+            deques.scope_indexes.back()->temp_type_RHS.push_back(node1);
+//
+        }
+
+        primary->PRIM_TYPE->
+                tokenType = t1.token_type;
+        primary->
+                lexer = lexer;
+        return
+                primary;
     }
+
     else {
-        //printf("Syntax Error at line number %d \n", __LINE__);
+
+//printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
+
     }
 }
 
@@ -287,6 +340,7 @@ struct notTree *parse_notTree(LexicalAnalyzer lexer) {
         return not_expr;
     }
     else {
+
         //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
@@ -315,23 +369,36 @@ struct operatorTree *parse_Operator(LexicalAnalyzer lexer) {
     }
     else if (is_Arithmetic(t1)) {
         oper->OP_TYPE->tokenType = t1.token_type;
+        deques.scope_indexes.back()->temp_type_RHS.clear();
         oper->EXPR1 = parse_Expr(lexer);
         lexer = oper->EXPR1->lexer;
         oper->EXPR2 = parse_Expr(lexer);
         oper->lexer = oper->EXPR2->lexer;
+        if (!deques.isRHS_TypeErrorFound) {
+            for (node *n : deques.scope_indexes.back()->temp_type_RHS) {
+                if (n->idNumber == 13 || n->idNumber == 14) {
+                    deques.isRHS_TypeErrorFound = true;
+                    deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C3";
+                }
+
+            }
+        }
+        deques.scope_indexes.back()->temp_type_RHS.clear();
+
+
         return oper;
     }
     else {
+
         //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
 }
 
 struct exprTree *parse_Expr(LexicalAnalyzer lexer) {
-    isSyntaxError();
     struct exprTree *expr = new(exprTree);
     Token t1 = lexer.GetToken();
-    if (is_Relational(t1) || is_BinaryBool(t1) || is_BinaryBool(t1)) // If still failing parsing, make all structs
+    if (is_Relational(t1) || is_Arithmetic(t1) || is_BinaryBool(t1)) // If still failing parsing, make all structs
     {
         lexer.UngetToken(t1);
         expr->OP = parse_Operator(lexer);
@@ -351,6 +418,7 @@ struct exprTree *parse_Expr(LexicalAnalyzer lexer) {
         return expr;
     }
     else {
+
         //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
@@ -358,7 +426,7 @@ struct exprTree *parse_Expr(LexicalAnalyzer lexer) {
 }
 
 struct assign_stmtTree *parse_assignStmt(LexicalAnalyzer lexer) {
-    isSyntaxError();
+    //isSyntanxError();
     struct assign_stmtTree *assign_stmt = new(assign_stmtTree);
     assign_stmt->EQ = new(node);
     assign_stmt->ID = new(node);
@@ -366,13 +434,56 @@ struct assign_stmtTree *parse_assignStmt(LexicalAnalyzer lexer) {
     Token t1 = lexer.GetToken();
     if (t1.token_type == ID) {
         //t1.Print();
-        assign_stmt->ID->tokenType = t1.token_type;
+        //t2.Print();
+        // "REAL", // 11
+        // "INT", //12
+        // "BOOLEAN", //13
+        // "STRING", //14
+        int typeNum = -1;
+        for (node *n : deques.allDeclarations) {
+            if (n->token.lexeme == t1.lexeme) {
+                typeNum = n->idNumber;
+            }
+        }
+        if (!deques.isDeclarationErrorFound)
+            isErrorOneTwo(t1.lexeme);
+        node *node1 = new (node);
+        node1->token = t1;
+        node1->tokenType = t1.token_type;
+        node1->idNumber = typeNum;
+        deques.scope_indexes.back()->references.push_back(node1);
+        deques.scope_indexes.back()->LHS_references.push_back((node1));
         Token t2 = lexer.GetToken();
         if (t2.token_type == EQUAL) {
             //t2.Print();
             assign_stmt->EQ->tokenType = t2.token_type;
             assign_stmt->EXPR = parse_Expr(lexer);
             lexer = assign_stmt->EXPR->lexer;
+            for (node *node2: deques.scope_indexes.back()->temp_type_LHS) {
+                if (node1->idNumber == 11 && node1->idNumber != node2->idNumber &&
+                    node1->idNumber != node2->idNumber + 1) {
+                    deques.typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C2";
+                    deques.isTypeErrorFound = true;
+                }
+                else if (node1->idNumber != node2->idNumber) {
+                    deques.typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C1";
+                    deques.isTypeErrorFound = true;
+                }
+            }
+            deques.scope_indexes.back()->temp_type_LHS.clear();
+
+//            if (deques.allDeclarations.back()->idNumber == 11 && !deques.isTypeErrorFound)
+//            {
+//                if (!(i == 11 || i == 12)) {
+//                    deques.typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C2";
+//                    deques.isTypeErrorFound = true;
+//                }
+//            }
+//            else if (!deques.isTypeErrorFound && deques.allDeclarations.back()->idNumber != i) {
+//                deques.typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C1";
+//                deques.isTypeErrorFound = true;
+//            }
+
             Token t3 = lexer.GetToken();
             if (t3.token_type == SEMICOLON) {
                 //t3.Print();
@@ -381,21 +492,24 @@ struct assign_stmtTree *parse_assignStmt(LexicalAnalyzer lexer) {
                 return assign_stmt;
             }
             else {
+                //printf("Syntax Error at line number %d \n", __LINE__);
                 syntaxError();
             }
         }
         else {
+            //printf("Syntax Error at line number %d \n", __LINE__);
             syntaxError();
         }
     }
     else {
+        //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
 
 }
 
 struct conditionTree *parse_Conditional(LexicalAnalyzer lexer) {
-    isSyntaxError();
+    //isSyntanxError();
     //// initialization
     struct conditionTree *conditional = new(conditionTree);
     conditional->LP = new (node);
@@ -414,17 +528,19 @@ struct conditionTree *parse_Conditional(LexicalAnalyzer lexer) {
             return conditional;
         }
         else {
+            //printf("Syntax Error at line number %d \n", __LINE__);
             syntaxError();
         }
 
     }
     else {
+        //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
 }
 
 struct stmt_listTree *parse_stmtList(LexicalAnalyzer lexer) {
-    isSyntaxError();
+    //isSyntanxError();
     struct stmt_listTree *stmt_list = new (stmt_listTree);
     stmt_list->STMT = parse_Stmt(lexer);
     lexer = stmt_list->STMT->lexer;
@@ -441,13 +557,14 @@ struct stmt_listTree *parse_stmtList(LexicalAnalyzer lexer) {
         return stmt_list;
     }
     else {
+        //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
 }
 
 struct while_stmtTree *parse_whileStmt(LexicalAnalyzer lexer) {
 
-    isSyntaxError();
+    //isSyntanxError();
 
     struct while_stmtTree *while_stmt = new(while_stmtTree);
     while_stmt->LB = new(node);
@@ -481,6 +598,7 @@ struct while_stmtTree *parse_whileStmt(LexicalAnalyzer lexer) {
                 return while_stmt;
             }
             else {
+                //printf("Syntax Error at line number %d \n", __LINE__);
                 syntaxError();
             }
         }
@@ -490,19 +608,20 @@ struct while_stmtTree *parse_whileStmt(LexicalAnalyzer lexer) {
             while_stmt->lexer = while_stmt->STMT->lexer;
             return while_stmt;
         }
-        else{
+        else {
+            //printf("Syntax Error at line number %d \n", __LINE__);
             syntaxError();
         }
     }
     else {
+
         //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
 }
 
-
 struct stmtTree *parse_Stmt(LexicalAnalyzer lexer) {
-    isSyntaxError();
+    //isSyntanxError();
     //// initialization
     struct stmtTree *stmt = new(stmtTree);
     Token t1 = lexer.GetToken();
@@ -519,6 +638,7 @@ struct stmtTree *parse_Stmt(LexicalAnalyzer lexer) {
         return stmt;
     }
     else {
+
         //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
@@ -526,7 +646,7 @@ struct stmtTree *parse_Stmt(LexicalAnalyzer lexer) {
 }
 
 struct id_listTree *parse_idList(LexicalAnalyzer lexer) {
-    isSyntaxError();
+    //isSyntanxError();
     //// initialization
     struct id_listTree *id_list = new(id_listTree);
     id_list->ID = new(node);
@@ -535,6 +655,12 @@ struct id_listTree *parse_idList(LexicalAnalyzer lexer) {
     if (t1.token_type == ID) {
         //t1.Print();
         id_list->ID->tokenType = t1.token_type;
+        if (!deques.isDeclarationErrorFound) {
+            isErrorOneOne(t1.lexeme);
+        }
+        node *node1 = new (node);
+        node1->token = t1;
+        deques.scope_indexes.back()->temp_type_RHS.push_back(node1);
         Token t2 = lexer.GetToken();
         if (t2.token_type == COMMA) {
             //t2.Print();
@@ -552,19 +678,20 @@ struct id_listTree *parse_idList(LexicalAnalyzer lexer) {
             return id_list;
         }
         else {
+
             //printf("Syntax Error at line number %d \n", __LINE__);
             syntaxError();
         }
     }
     else {
+
         //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
 }
 
-
 struct var_declTree *parse_varDecl(LexicalAnalyzer lexer) {
-    isSyntaxError();
+    //isSyntanxError();
     //// initialization
     struct var_declTree *var_decl = new(var_declTree);
     //// id_list
@@ -584,8 +711,33 @@ struct var_declTree *parse_varDecl(LexicalAnalyzer lexer) {
         Token t2 = lexer.GetToken();
         if (t2.token_type == REAL || t2.token_type == INT || t2.token_type == BOOLEAN || t2.token_type == STRING) {
             //t2.Print();
+            // "REAL", // 11
+            // "INT", //12
+            // "BOOLEAN", //13
+            // "STRING", //14
+            int typeNum;
+            if (t2.token_type == REAL) {
+                typeNum = 11;
+            }
+            else if (t2.token_type == INT) {
+                typeNum = 12;
+            }
+            else if (t2.token_type == BOOLEAN) {
+                typeNum = 13;
+            }
+            else {
+                typeNum = 14;
+            }
             /// = ^^^^ might need to parse these^^^^
             var_decl->TN->tokenType = t2.token_type;
+
+            for (node *node1 : deques.scope_indexes.back()->temp_type_RHS) {
+                node1->idNumber = typeNum;
+                deques.allDeclarations.push_back(node1);
+                deques.scope_indexes.back()->declarations.push_back(node1);
+            }
+            deques.scope_indexes.back()->temp_type_RHS.clear();
+
 
             Token t3 = lexer.GetToken();
             //t3.Print();
@@ -596,24 +748,26 @@ struct var_declTree *parse_varDecl(LexicalAnalyzer lexer) {
                 return var_decl;
             }
             else {
+
                 //printf("Syntax Error at line number %d \n", __LINE__);
                 syntaxError();
             }
         }
         else {
+
             //printf("Syntax Error at line number %d \n", __LINE__);
             syntaxError();
         }
     }
     else {
+
         //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
 }
 
-
 struct scope_listTree *parse_scopeList(LexicalAnalyzer lexer) {
-    isSyntaxError();
+    //isSyntanxError();
     ////initialize
     struct scope_listTree *scope_list = new (scope_listTree);
 //    scope_list->STMT = new(stmtTree);
@@ -628,7 +782,7 @@ struct scope_listTree *parse_scopeList(LexicalAnalyzer lexer) {
     ////////////////////////////////////////
     if (t1.token_type == ID) {
         Token t2 = lexer.GetToken();
-        ////t2.Print();
+        //t2.Print();
         ///////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////
         ////                  var_Decl
@@ -654,7 +808,7 @@ struct scope_listTree *parse_scopeList(LexicalAnalyzer lexer) {
                 ////////////////////////////////////////////////////
                 ////            var_decl scope_list
                 ///////////////////////////////////////////////////
-            else if (t3.token_type == LBRACE || t3.token_type == ID || t3.token_type == WHILE){
+            else if (t3.token_type == LBRACE || t3.token_type == ID || t3.token_type == WHILE) {
                 lexer.UngetToken(t3);
                 scope_list->SL = parse_scopeList(lexer);
                 lexer = scope_list->SL->lexer;
@@ -662,7 +816,8 @@ struct scope_listTree *parse_scopeList(LexicalAnalyzer lexer) {
                 scope_list->lexer = lexer;
                 return scope_list;
             }
-            else{
+            else {
+                //printf("Syntax Error at line number %d \n", __LINE__);
                 syntaxError();
             }
         }
@@ -697,12 +852,13 @@ struct scope_listTree *parse_scopeList(LexicalAnalyzer lexer) {
                 scope_list->lexer = lexer;
                 return scope_list;
             }
-            else
-            {
+            else {
+                //printf("Syntax Error at line number %d \n", __LINE__);
                 syntaxError();
             }
         }
         else {
+
             //printf("Syntax Error at line number %d \n", __LINE__);
             syntaxError();
         }
@@ -733,8 +889,7 @@ struct scope_listTree *parse_scopeList(LexicalAnalyzer lexer) {
             //////////////////////////////////
             ////        stmt scope_list
             //////////////////////////////////
-        else if (t2.token_type == LBRACE || t2.token_type == ID || t2.token_type == WHILE)
-        {            
+        else if (t2.token_type == LBRACE || t2.token_type == ID || t2.token_type == WHILE) {
             lexer.UngetToken(t2);
             scope_list->SL = parse_scopeList(lexer);
             lexer = scope_list->SL->lexer;
@@ -742,8 +897,8 @@ struct scope_listTree *parse_scopeList(LexicalAnalyzer lexer) {
             scope_list->lexer = lexer;
             return scope_list;
         }
-        else
-        {
+        else {
+            //printf("Syntax Error at line number %d \n", __LINE__);
             syntaxError();
         }
     }
@@ -772,7 +927,7 @@ struct scope_listTree *parse_scopeList(LexicalAnalyzer lexer) {
             ////////////////////////////////////
             ////    scope scope_list
             ////////////////////////////////////
-        else if (t2.token_type == LBRACE || t2.token_type == ID || t2.token_type == WHILE){
+        else if (t2.token_type == LBRACE || t2.token_type == ID || t2.token_type == WHILE) {
             lexer.UngetToken(t2);
 
             scope_list->SL = parse_scopeList(lexer);
@@ -781,11 +936,13 @@ struct scope_listTree *parse_scopeList(LexicalAnalyzer lexer) {
             scope_list->lexer = lexer;
             return scope_list;
         }
-        else{
+        else {
+            //printf("Syntax Error at line number %d \n", __LINE__);
             syntaxError();
         }
     }
     else {
+
         //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
@@ -793,7 +950,7 @@ struct scope_listTree *parse_scopeList(LexicalAnalyzer lexer) {
 
 //// rb for Right Brace not Red-Black haha
 struct rbTree *parse_End(LexicalAnalyzer lexer) {
-    isSyntaxError();
+    //isSyntanxError();
     struct rbTree *right_brace = new(rbTree);
     right_brace->RB = new (node);
     Token t1 = lexer.GetToken();
@@ -816,6 +973,7 @@ struct rbTree *parse_End(LexicalAnalyzer lexer) {
         }
     }
     else {
+
         //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
@@ -841,6 +999,7 @@ struct scopeTree *parse_Scope(LexicalAnalyzer lexer) {
         Token t2 = lexer.GetToken();
         lexer.UngetToken(t2);
         if (t2.token_type != LBRACE && t2.token_type != WHILE && t2.token_type != ID) {
+            //printf("Syntax Error at line number %d \n", __LINE__);
             syntaxError();
         }
         scope->SL = parse_scopeList(lexer);
@@ -849,6 +1008,7 @@ struct scopeTree *parse_Scope(LexicalAnalyzer lexer) {
         Token t3 = lexer.GetToken();
         lexer.UngetToken(t3);
         if (t3.token_type != RBRACE) {
+            //printf("Syntax Error at line number %d \n", __LINE__);
             syntaxError();
         }
         scope->RBT = parse_End(lexer);
@@ -856,30 +1016,33 @@ struct scopeTree *parse_Scope(LexicalAnalyzer lexer) {
         //// add right Brace index and scope type to deque and scopeTree struct
         index->end = scope->RBT->lineNo;
         deques.scope_indexes.back()->end = index->end;
-        if (deques.scope_indexes.back()->type == "WHILE")
-        {
+        if (deques.scope_indexes.back()->type == "WHILE") {
+            //printf("Syntax Error at line number %d \n", __LINE__);
             syntaxError();
         }
         scope->index->end = index->end;
         deques.completed_indexes.push_front(deques.scope_indexes.back());
-        isSyntaxError();
+        //isSyntanxError();
         deques.scope_indexes.pop_back();
-        isSyntaxError();
+        //isSyntanxError();
         //// scope done
         scope->lexer = lexer;
         return scope;
     }
     else {
+
         //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
 
 }
 
+
 int main() {
     //// initialize stuff
-    struct programTree * program_tree = new(programTree);
+    struct programTree *program_tree = new(programTree);
     LexicalAnalyzer lexer;
+
 
     //// in case we need to check correct order
     //    Token token = lexicalAnalyzer->GetToken();
@@ -892,13 +1055,57 @@ int main() {
     //// add scope tree to programs
     Token token = lexer.GetToken();
     if (token.token_type == LBRACE) {
+        lexer.UngetToken(token);
         program_tree->S = parse_Scope(lexer);
     }
-    else{
+    else {
+        //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
+//    for (indexNode *indexNode1 : deques.completed_indexes) {
+//        for (node *node1: indexNode1->declarations) {
+//            cout << node1->token.lexeme;
+//        }
+//        cout << "\n\n";
+//    }
+//    for (indexNode *indexNode1 : deques.completed_indexes) {
+//        for (node *node1: indexNode1->references) {
+//            cout << node1->token.lexeme;
+//        }
+//        cout << "\n\n";
+//    }
+    //// Error 1.1 & Error 1.2 ////
+    if (deques.isDeclarationErrorFound) {
+        cout << deques.declarationErrorFound;
+        exit(EXIT_FAILURE);
+    }
+        //// Error 1.3 ////
+    else {
+        for (int i = 0; i < deques.completed_indexes.size(); ++i) {
+            for (int j = 0; j < deques.completed_indexes.at(i)->declarations.size(); ++j) {
+                bool used = false;
+                for (int k = i; k < deques.completed_indexes.size(); ++k) {
+                    for (int l = 0; l < deques.completed_indexes.at(k)->references.size(); ++l) {
+                        if (deques.completed_indexes.at(i)->declarations.at(j)->token.lexeme ==
+                            deques.completed_indexes.at(k)->references.at(l)->token.lexeme) {
+                            used = true;
+                        }
+                    }
+                }
+                if (!used) {
+                    cout << "ERROR CODE 1.3 " << deques.completed_indexes.at(i)->declarations.at(j)->token.lexeme;
+                    exit(EXIT_FAILURE);
+                }
+            }
 
-
-    //// print program tree
+        }
+    }
+    if (deques.isTypeErrorFound) {
+        cout << deques.typeErrorFound;
+        exit(EXIT_FAILURE);
+    }
 }
+//cout << "ERROR CODE 1.3 " << token.lexeme;
+//                exit(EXIT_FAILURE);
+//// print program tree
 
