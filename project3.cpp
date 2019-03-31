@@ -86,9 +86,8 @@ struct indexNode {
     vector<node *> LHS_references;
     vector<node *> temp_type_RHS;
     vector<node *> temp_type_LHS;
-    vector<node *> operatorTypeMatcher;
-
-
+    vector<node *> conditionalTypes;
+    vector<node *> notType;
 };
 struct node {
 
@@ -107,6 +106,8 @@ struct indexDeques {
     string typeErrorFound;
     bool isRHS_TypeErrorFound = false;
     string RHS_typeErrorFound;
+    bool isConditionalErrorFound = false;
+    string foundConditionalError;
 } deques;
 struct operatorTree {
     struct node *OP_TYPE;
@@ -309,6 +310,8 @@ struct primaryTree *parse_Primary(LexicalAnalyzer lexer) {
             deques.scope_indexes.back()->references.push_back(node1);
             deques.scope_indexes.back()->temp_type_LHS.push_back(node1);
             deques.scope_indexes.back()->temp_type_RHS.push_back(node1);
+            deques.scope_indexes.back()->conditionalTypes.push_back(node1);
+            deques.scope_indexes.back()->notType.push_back(node1);
 //
         }
 
@@ -334,9 +337,24 @@ struct notTree *parse_notTree(LexicalAnalyzer lexer) {
     Token t1 = lexer.GetToken();
     if (t1.token_type == NOT) {
         //t1.Print();
+        deques.scope_indexes.back()->notType.clear();
         not_expr->NOT->tokenType = t1.token_type;
         not_expr->EXPR = parse_Expr(lexer);
         not_expr->lexer = not_expr->EXPR->lexer;
+        if (!deques.isRHS_TypeErrorFound) {
+            if (not_expr->EXPR->PRIM->PRIM_TYPE->idNumber != 13)
+            {
+                    deques.isRHS_TypeErrorFound = true;
+                    deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C8";
+            }
+            for (node *node1 : deques.scope_indexes.back()->notType) {
+                if (node1->idNumber != 13) {
+                    deques.isRHS_TypeErrorFound = true;
+                    deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C8";
+                }
+            }
+        }
+        deques.scope_indexes.back()->notType.clear();
         return not_expr;
     }
     else {
@@ -353,18 +371,64 @@ struct operatorTree *parse_Operator(LexicalAnalyzer lexer) {
     //t1.Print();
     if (is_BinaryBool(t1)) {
         oper->OP_TYPE->tokenType = t1.token_type;
+        deques.scope_indexes.back()->temp_type_RHS.clear();
         oper->EXPR1 = parse_Expr(lexer);
         lexer = oper->EXPR1->lexer;
         oper->EXPR2 = parse_Expr(lexer);
         oper->lexer = oper->EXPR2->lexer;
+        if (!deques.isRHS_TypeErrorFound) {
+            for (node *n : deques.scope_indexes.back()->temp_type_RHS) {
+                if (n->idNumber == 11 || n->idNumber == 12 || n->idNumber == 14) {
+                    deques.isRHS_TypeErrorFound = true;
+                    deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C4";
+                }
+
+            }
+        }
+        deques.scope_indexes.back()->temp_type_RHS.clear();
         return oper;
     }
     else if (is_Relational(t1)) {
+        deques.scope_indexes.back()->temp_type_RHS.clear();
         oper->OP_TYPE->tokenType = t1.token_type;
         oper->EXPR1 = parse_Expr(lexer);
         lexer = oper->EXPR1->lexer;
         oper->EXPR2 = parse_Expr(lexer);
         oper->lexer = oper->EXPR2->lexer;
+        if (!deques.isRHS_TypeErrorFound) {
+            bool scenario = false;
+            for (node *n : deques.scope_indexes.back()->temp_type_RHS) {
+                if (n->idNumber == 11 || n->idNumber == 12) {
+                    scenario = true;
+                }
+            }
+            if (!scenario) {
+                int a = 0;
+                int b = 0;
+                for (node *n : deques.scope_indexes.back()->temp_type_RHS) {
+                    if (n->idNumber == 14) {
+                        b++;
+                    }
+                    else if (n->idNumber == 13) {
+                        a++;
+                    }
+                }
+                if (a > 0 && b > 0) {
+                    deques.isRHS_TypeErrorFound = true;
+                    deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C5";
+                }
+            }
+            else {
+                for (node *n : deques.scope_indexes.back()->temp_type_RHS) {
+                    if (n->idNumber == 13 || n->idNumber == 14) {
+                        deques.isRHS_TypeErrorFound = true;
+                        deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C6";
+                    }
+                }
+            }
+
+        }
+        deques.scope_indexes.back()->temp_type_RHS.clear();
         return oper;
     }
     else if (is_Arithmetic(t1)) {
@@ -518,11 +582,22 @@ struct conditionTree *parse_Conditional(LexicalAnalyzer lexer) {
     if (t1.token_type == LPAREN) {
         conditional->LP->tokenType = t1.token_type;
         //t1.Print();
+        deques.scope_indexes.back()->conditionalTypes.clear();
         conditional->EXPR = parse_Expr(lexer);
+        if (!deques.isConditionalErrorFound) {
+            for (node *node1 : deques.scope_indexes.back()->conditionalTypes) {
+                if (node1->idNumber != 13) {
+                    deques.isConditionalErrorFound = true;
+                    deques.foundConditionalError = "TYPE MISMATCH " + to_string(t1.line_no) + " C7";
+                }
+            }
+        }
+        deques.scope_indexes.back()->conditionalTypes.clear();
         lexer = conditional->EXPR->lexer;
         Token t2 = lexer.GetToken();
         if (t2.token_type == RPAREN) {
             //t2.Print();
+
             conditional->RP->tokenType = t2.token_type;
             conditional->lexer = lexer;
             return conditional;
@@ -1062,18 +1137,6 @@ int main() {
         //printf("Syntax Error at line number %d \n", __LINE__);
         syntaxError();
     }
-//    for (indexNode *indexNode1 : deques.completed_indexes) {
-//        for (node *node1: indexNode1->declarations) {
-//            cout << node1->token.lexeme;
-//        }
-//        cout << "\n\n";
-//    }
-//    for (indexNode *indexNode1 : deques.completed_indexes) {
-//        for (node *node1: indexNode1->references) {
-//            cout << node1->token.lexeme;
-//        }
-//        cout << "\n\n";
-//    }
     //// Error 1.1 & Error 1.2 ////
     if (deques.isDeclarationErrorFound) {
         cout << deques.declarationErrorFound;
@@ -1100,9 +1163,20 @@ int main() {
 
         }
     }
-    if (deques.isTypeErrorFound) {
+    if (deques.isRHS_TypeErrorFound) {
+        cout << deques.RHS_typeErrorFound;
+        exit(EXIT_FAILURE);
+    }
+    else if (deques.isConditionalErrorFound) {
+        cout << deques.foundConditionalError;
+        exit(EXIT_FAILURE);
+    }
+    else if (deques.isTypeErrorFound) {
         cout << deques.typeErrorFound;
         exit(EXIT_FAILURE);
+    }
+    else {
+
     }
 }
 //cout << "ERROR CODE 1.3 " << token.lexeme;
