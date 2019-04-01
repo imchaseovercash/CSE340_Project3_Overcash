@@ -95,7 +95,7 @@ struct node {
     Token token;
     Token assignedType;
     TokenType tokenType;
-    int idNumber;
+    int idNumber = -1;
 };
 struct indexDeques {
     deque<indexNode *> scope_indexes;
@@ -131,6 +131,7 @@ struct exprTree {
     struct operatorTree *OP;
     struct notTree *NT;
     LexicalAnalyzer lexer;
+    string path;
 };
 struct assign_stmtTree {
     int lineNo;
@@ -351,7 +352,7 @@ struct primaryTree *parse_Primary(LexicalAnalyzer lexer) {
     }
 }
 
-struct notTree *parse_notTree(LexicalAnalyzer lexer) {
+struct notTree *parse_notTree(LexicalAnalyzer lexer)    {
     struct notTree *not_expr = new(notTree);
     not_expr->NOT = new (node);
     Token t1 = lexer.GetToken();
@@ -361,18 +362,35 @@ struct notTree *parse_notTree(LexicalAnalyzer lexer) {
         not_expr->NOT->tokenType = t1.token_type;
         not_expr->EXPR = parse_Expr(lexer);
         not_expr->lexer = not_expr->EXPR->lexer;
-        if (!deques.isRHS_TypeErrorFound) {
-            if (not_expr->EXPR->PRIM->PRIM_TYPE->idNumber != 13) {
+        if (not_expr->EXPR->OP->OP_TYPE->idNumber != 13 && not_expr->EXPR->OP->OP_TYPE->idNumber != -1 && !deques.isRHS_TypeErrorFound) {
                 deques.isRHS_TypeErrorFound = true;
                 deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C8";
-            }
-            for (node *node1 : deques.scope_indexes.back()->notType) {
-                if (node1->idNumber != 13) {
-                    deques.isRHS_TypeErrorFound = true;
-                    deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C8";
-                }
-            }
         }
+        else if(not_expr->EXPR->PRIM->PRIM_TYPE->idNumber != 13 && not_expr->EXPR->OP->OP_TYPE->idNumber != -1 && !deques.isRHS_TypeErrorFound){
+                deques.isRHS_TypeErrorFound = true;
+                deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C8";
+        }
+        else if (not_expr->EXPR->PRIM->PRIM_TYPE->idNumber != 13 && not_expr->EXPR->OP->OP_TYPE->idNumber != -1 && !deques.isRHS_TypeErrorFound)
+        {
+            deques.isRHS_TypeErrorFound = true;
+            deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C8";
+        }
+        else
+        {
+            not_expr->NOT->idNumber = 13;
+
+        }
+//            if (not_expr->EXPR->PRIM->PRIM_TYPE->idNumber != 13) {
+//                deques.isRHS_TypeErrorFound = true;
+//                deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C8";
+//            }
+//            for (node *node1 : deques.scope_indexes.back()->notType) {
+//                if (node1->idNumber != 13) {
+//                    deques.isRHS_TypeErrorFound = true;
+//                    deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C8";
+//                }
+//            }
+//        }
         deques.scope_indexes.back()->notType.clear();
         return not_expr;
     }
@@ -517,18 +535,21 @@ struct exprTree *parse_Expr(LexicalAnalyzer lexer) {
     Token t1 = lexer.GetToken();
     if (is_Relational(t1) || is_Arithmetic(t1) || is_BinaryBool(t1)) // If still failing parsing, make all structs
     {
+        expr->path = "OP";
         lexer.UngetToken(t1);
         expr->OP = parse_Operator(lexer);
         expr->lexer = expr->OP->lexer;
         return expr;
     }
     else if (t1.token_type == NOT) {
+        expr->path = "NOT";
         lexer.UngetToken(t1);
         expr->NT = parse_notTree(lexer);
         expr->lexer = expr->NT->lexer;
         return expr;
     }
     else if (is_Primary(t1)) {
+        expr->path = "PRIM";
         lexer.UngetToken(t1);
         expr->PRIM = parse_Primary(lexer);
         expr->lexer = expr->PRIM->lexer;
@@ -638,14 +659,34 @@ struct conditionTree *parse_Conditional(LexicalAnalyzer lexer) {
         //t1.Print();
         deques.scope_indexes.back()->conditionalTypes.clear();
         conditional->EXPR = parse_Expr(lexer);
-        if (!deques.isConditionalErrorFound) {
-            for (node *node1 : deques.scope_indexes.back()->conditionalTypes) {
-                if (node1->idNumber != 13) {
-                    deques.isConditionalErrorFound = true;
-                    deques.foundConditionalError = "TYPE MISMATCH " + to_string(t1.line_no) + " C7";
-                }
-            }
+        bool test = false;
+        if (!deques.isConditionalErrorFound && conditional->EXPR->path == "OP") {
+            if (conditional->EXPR->OP->OP_TYPE->idNumber == 13)
+                test = true;
         }
+        else if (!deques.isConditionalErrorFound && conditional->EXPR->path == "NOT")
+        {
+            if (conditional->EXPR->NT->NOT->idNumber == 13)
+                test = true;
+        }
+        else if (!deques.isConditionalErrorFound && conditional->EXPR->path == "PRIM")
+        {
+            if (conditional->EXPR->PRIM->PRIM_TYPE->idNumber == 13)
+                test = true;
+        }
+        if (!test)
+        {
+            deques.isConditionalErrorFound = true;
+            deques.foundConditionalError = "TYPE MISMATCH " + to_string(t1.line_no) + " C7";
+        }
+//        if (!deques.isConditionalErrorFound) {
+//            for (node *node1 : deques.scope_indexes.back()->conditionalTypes) {
+//                if (node1->idNumber != 13) {
+//                    deques.isConditionalErrorFound = true;
+//                    deques.foundConditionalError = "TYPE MISMATCH " + to_string(t1.line_no) + " C7";
+//                }
+//            }
+//        }
         deques.scope_indexes.back()->conditionalTypes.clear();
         lexer = conditional->EXPR->lexer;
         Token t2 = lexer.GetToken();
