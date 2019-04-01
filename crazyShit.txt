@@ -1,162 +1,22 @@
-//
-// Created by Chase Overcash on 3/27/2019.
-//
-
-#include <iostream>
-#include <istream>
-#include <vector>
-#include <string>
-#include <cctype>
-
-#include "lexer.h"
-#include "inputbuf.h"
-
-using namespace std;
-LexicalAnalyzer lexer;
-struct node
 {
-    Token token;
-    TokenType tokenType;
-    int idNumber;
-};
-struct exprTree{
-    struct node* primary;
-};
-struct assign_stmtTree {
-    struct node* ID;
-    struct node* EQ;
-    struct exprTree* EXPR;
-    struct node* SC;
-};
-struct stmt_Tree{
-    struct assign_stmtTree* AST;
-};
-struct type_nameTree {
+    x, y, z : INT ;
+    s : BOOLEAN ;
 
-};
-struct id_listTree{
-
-};
-struct var_declTree {
-    struct id_listTree IDL;
-    struct node* ID;
-    struct node* COL;
-    struct type_nameTree* TN;
-    struct node* SC;
-};
-struct scope_listTree{
-    struct var_declTree* VD;
-    struct scopeTree* S;
-    struct scope_listTree* SL;
-    struct stmt_Tree* STMT;
-};
-struct scopeTree {
-    struct node* LB;
-    struct node* RB;
-    struct scope_listTree* SL;
-};
-struct programTree {
-    struct scopeTree* S;
-};
-
-
-////
-////Prints stuff
-////
-////
-void finishState() {
-
-}
-
-void syntaxError() {
-    cout << "Syntax Error ";
-    exit(EXIT_FAILURE);
-}
-
-bool is_Primary(Token token) {
-    return token.token_type == ID || token.token_type == NUM || token.token_type == REALNUM ||
-           token.token_type == STRING_CONSTANT || token.token_type == TRUE || token.token_type == FALSE;
-}
-
-bool is_Arithmetic(Token t2) {
-    return t2.token_type == PLUS || t2.token_type == MINUS || t2.token_type == MULT || t2.token_type == DIV;
-}
-
-bool is_BinaryBool(Token t2) {
-    return t2.token_type == AND || t2.token_type == OR || t2.token_type == XOR;
-}
-
-bool is_Relational(Token t2) {
-    return t2.token_type == GREATER || t2.token_type == GTEQ || t2.token_type == LESS || t2.token_type == NOTEQUAL ||
-           t2.token_type == LTEQ;
-}
-
-bool is_Expr(Token token) {
-    return is_Arithmetic(token) || is_BinaryBool(token) || is_Relational(token) || is_Primary(token) ||
-           token.token_type == NOT;
-}
-
-struct scope_listTree* parse_scopeList(LexicalAnalyzer lexer);
-
-struct scopeTree* parse_Scope(LexicalAnalyzer lexer);
-
-void parse_nextLine(LexicalAnalyzer lexicalAnalyzer);
-
-void parse_assignStmt(LexicalAnalyzer lexer);
-
-void parse_whileStmt(LexicalAnalyzer lexer); // leaves stmt_List to endLine, this might cause problems with errors?
-
-TokenType parse_Expr(LexicalAnalyzer lexer);
-
-struct scope_listTree* parse_scopeList(LexicalAnalyzer lexer) {
-    struct scope_listTree* scope_list = new (struct scope_listTree);
-    Token t1 = lexer.GetToken();
-    if (t1.token_type == ID) {
-        t1.Print();
-        Token t2 = lexer.GetToken();
-        if (t2.token_type == COLON || t2.token_type == COMMA) {
-            lexer.UngetToken(t2);
-            parse_varDecl(lexer);
-        } else if (t2.token_type == EQUAL) {
-            t2.Print();
-            parse_assignStmt(lexer);
-        } else {
-            //// printf("Syntax Error at line number %d \n", __LINE__);
-            syntaxError();
-        }
-    } else if (t1.token_type == WHILE) {
-        t1.Print();
-        parse_whileStmt(lexer);
-    } else {
-        //// printf("Syntax Error at line number %d \n", __LINE__);
-        syntaxError();
-    }
-}
-struct scopeTree* parse_Scope() {
-    struct scopeTree* scope = new(struct scopeTree);
-    lexer.GetToken();
-    Token t1 = lexer.GetToken();
-    if (t1.token_type == LBRACE) {
-        t1.Print();
-        scope->LB->token = t1;
-        scope->LB->tokenType = t1.token_type;
-        scope->LB->idNumber = 2;
-        scope->SL = parse_scopeList(lexer);
-    } else {
-        //// printf("Syntax Error at line number %d \n", __LINE__);
-        syntaxError();
+    {
+        x : INT ;
+        x = 10 ;
+        x = + x 1.1 ;
     }
 
-}
-int main() {
-    LexicalAnalyzer lexer;
-    Token token;
-//    token = lexer.GetToken();
-//    token.Print();
-//    while (token.token_type != END_OF_FILE) {
-//        token = lexer.GetToken();
-//        token.Print();
-//    }
-    struct programTree* programTree1;
-    programTree1 = parse_Scope();
+    y = 100 ;
+    z = y ;
+    x = z ;
+
+    WHILE ( < x y ) {
+        x = + x 1 ;
+        z = - x 2 ;
+        s = 10 ;
+    }
+
+    x = s ;
 }

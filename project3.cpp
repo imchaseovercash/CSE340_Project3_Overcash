@@ -88,6 +88,7 @@ struct indexNode {
     vector<node *> temp_type_LHS;
     vector<node *> conditionalTypes;
     vector<node *> notType;
+    vector<node *> allTypes;
 };
 struct node {
 
@@ -100,6 +101,7 @@ struct indexDeques {
     deque<indexNode *> scope_indexes;
     deque<indexNode *> completed_indexes;
     vector<node *> allDeclarations;
+    vector<node*> allReferences;
     bool isDeclarationErrorFound = false;
     string declarationErrorFound;
     bool isTypeErrorFound = false;
@@ -307,13 +309,31 @@ struct primaryTree *parse_Primary(LexicalAnalyzer lexer) {
             }
             node1->token = t1;
             node1->idNumber = i;
+            primary->PRIM_TYPE->idNumber = i;
             deques.scope_indexes.back()->references.push_back(node1);
             deques.scope_indexes.back()->temp_type_LHS.push_back(node1);
             deques.scope_indexes.back()->temp_type_RHS.push_back(node1);
             deques.scope_indexes.back()->conditionalTypes.push_back(node1);
             deques.scope_indexes.back()->notType.push_back(node1);
-//
+            deques.allReferences.push_back(node1);
         }
+        else if (t1.token_type == NUM)
+        {
+            primary->PRIM_TYPE->idNumber = 12;
+        }
+        else if (t1.token_type == REALNUM)
+        {
+            primary->PRIM_TYPE->idNumber = 11;
+        }
+        else if (t1.token_type == TRUE || t1.token_type == FALSE)
+        {
+            primary->PRIM_TYPE->idNumber = 13;
+        }
+        else{
+            primary->PRIM_TYPE->idNumber = 14;
+        }
+
+
 
         primary->PRIM_TYPE->
                 tokenType = t1.token_type;
@@ -342,10 +362,9 @@ struct notTree *parse_notTree(LexicalAnalyzer lexer) {
         not_expr->EXPR = parse_Expr(lexer);
         not_expr->lexer = not_expr->EXPR->lexer;
         if (!deques.isRHS_TypeErrorFound) {
-            if (not_expr->EXPR->PRIM->PRIM_TYPE->idNumber != 13)
-            {
-                    deques.isRHS_TypeErrorFound = true;
-                    deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C8";
+            if (not_expr->EXPR->PRIM->PRIM_TYPE->idNumber != 13) {
+                deques.isRHS_TypeErrorFound = true;
+                deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C8";
             }
             for (node *node1 : deques.scope_indexes.back()->notType) {
                 if (node1->idNumber != 13) {
@@ -376,14 +395,20 @@ struct operatorTree *parse_Operator(LexicalAnalyzer lexer) {
         lexer = oper->EXPR1->lexer;
         oper->EXPR2 = parse_Expr(lexer);
         oper->lexer = oper->EXPR2->lexer;
+        bool test = true;
         if (!deques.isRHS_TypeErrorFound) {
             for (node *n : deques.scope_indexes.back()->temp_type_RHS) {
                 if (n->idNumber == 11 || n->idNumber == 12 || n->idNumber == 14) {
                     deques.isRHS_TypeErrorFound = true;
                     deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C4";
+                    test = false;
                 }
 
             }
+        }
+        if (test)
+        {
+            oper->OP_TYPE->idNumber =13;
         }
         deques.scope_indexes.back()->temp_type_RHS.clear();
         return oper;
@@ -402,6 +427,7 @@ struct operatorTree *parse_Operator(LexicalAnalyzer lexer) {
                     scenario = true;
                 }
             }
+            bool test = true;
             if (!scenario) {
                 int a = 0;
                 int b = 0;
@@ -416,6 +442,7 @@ struct operatorTree *parse_Operator(LexicalAnalyzer lexer) {
                 if (a > 0 && b > 0) {
                     deques.isRHS_TypeErrorFound = true;
                     deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C5";
+                    test = false;
                 }
             }
             else {
@@ -423,8 +450,13 @@ struct operatorTree *parse_Operator(LexicalAnalyzer lexer) {
                     if (n->idNumber == 13 || n->idNumber == 14) {
                         deques.isRHS_TypeErrorFound = true;
                         deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C6";
+                        test = false;
                     }
                 }
+            }
+            if (test)
+            {
+                oper->OP_TYPE->idNumber = 13;
             }
 
         }
@@ -438,14 +470,35 @@ struct operatorTree *parse_Operator(LexicalAnalyzer lexer) {
         lexer = oper->EXPR1->lexer;
         oper->EXPR2 = parse_Expr(lexer);
         oper->lexer = oper->EXPR2->lexer;
+        bool test = false;
+        bool real = false;
+        bool inty = true;
         if (!deques.isRHS_TypeErrorFound) {
             for (node *n : deques.scope_indexes.back()->temp_type_RHS) {
                 if (n->idNumber == 13 || n->idNumber == 14) {
                     deques.isRHS_TypeErrorFound = true;
+                    test = true;
                     deques.RHS_typeErrorFound = "TYPE MISMATCH " + to_string(t1.line_no) + " C3";
+                }
+                if (n->idNumber == 11)
+                {
+                    real = true;
+                }
+                if (n->idNumber != 12)
+                {
+                    inty = false;
                 }
 
             }
+        }
+        if (!test && real)
+        {
+            oper->OP_TYPE->idNumber = 11;
+
+        }
+        else if(inty && (t1.token_type == PLUS || t1.token_type == MINUS || t1.token_type == MULT)){
+            oper->OP_TYPE->idNumber =12;
+
         }
         deques.scope_indexes.back()->temp_type_RHS.clear();
 
@@ -517,6 +570,7 @@ struct assign_stmtTree *parse_assignStmt(LexicalAnalyzer lexer) {
         node1->idNumber = typeNum;
         deques.scope_indexes.back()->references.push_back(node1);
         deques.scope_indexes.back()->LHS_references.push_back((node1));
+        deques.allReferences.push_back(node1);
         Token t2 = lexer.GetToken();
         if (t2.token_type == EQUAL) {
             //t2.Print();
@@ -1112,7 +1166,6 @@ struct scopeTree *parse_Scope(LexicalAnalyzer lexer) {
 
 }
 
-
 int main() {
     //// initialize stuff
     struct programTree *program_tree = new(programTree);
@@ -1163,20 +1216,32 @@ int main() {
 
         }
     }
+
     if (deques.isRHS_TypeErrorFound) {
         cout << deques.RHS_typeErrorFound;
-        exit(EXIT_FAILURE);
-    }
-    else if (deques.isConditionalErrorFound) {
-        cout << deques.foundConditionalError;
         exit(EXIT_FAILURE);
     }
     else if (deques.isTypeErrorFound) {
         cout << deques.typeErrorFound;
         exit(EXIT_FAILURE);
     }
+    else if (deques.isConditionalErrorFound) {
+        cout << deques.foundConditionalError;
+        exit(EXIT_FAILURE);
+    }
     else {
-
+        // if on either side of scope doesnt work
+        for (int i = 0; i < deques.allReferences.size(); i++) {
+            int lineNo = 0;
+            for (int j = 0; j < deques.allDeclarations.size(); j++) {
+                if (deques.allDeclarations.at(j)->token.lexeme == deques.allReferences.at(i)->token.lexeme &&
+                    deques.allDeclarations.at(j)->token.line_no < deques.allReferences.at(i)->token.line_no) {
+                    lineNo = deques.allDeclarations.at(j)->token.line_no;
+                }
+            }
+            cout << deques.allReferences.at(i)->token.lexeme
+                 << " " + to_string(deques.allReferences.at(i)->token.line_no) << " " << to_string(lineNo) << " \n";
+        }
     }
 }
 //cout << "ERROR CODE 1.3 " << token.lexeme;
